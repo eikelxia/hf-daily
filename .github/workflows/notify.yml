@@ -1,0 +1,35 @@
+name: Send WeCom Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: '消息内容（Markdown）'
+        required: true
+        type: string
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Send message
+        env:
+          WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
+          MSG: ${{ github.event.inputs.message }}
+        run: |
+          python3 -c "
+          import os, requests, json
+          webhook = os.environ['WECOM_WEBHOOK_URL']
+          msg = os.environ['MSG']
+          payload = {'msgtype': 'markdown', 'markdown': {'content': msg}}
+          r = requests.post(webhook, json=payload, timeout=10)
+          print(r.json())
+          "
