@@ -4,7 +4,10 @@ on:
   schedule:
     # 北京时间每天 9:00 和 14:00（UTC 1:00 和 6:00）
     - cron: '0 1,6 * * *'
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   scan:
@@ -30,6 +33,10 @@ jobs:
         run: |
           git config user.name "hf-daily-bot"
           git config user.email "bot@hf-daily.local"
-          git add data/
-          git diff --cached --quiet || git commit -m "📊 自动更新项目数据 [$(date -u -d '+8 hours' '+%Y-%m-%d %H:%M')]"
-          git push
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git add data/
+            git commit -m "📊 自动更新项目数据 [$(date -u -d '+8 hours' '+%Y-%m-%d %H:%M')]"
+            git push
+          fi
