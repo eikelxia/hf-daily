@@ -31,5 +31,5 @@ jobs:
           git config user.name "hf-daily-bot"
           git config user.email "bot@hf-daily.local"
           git add data/
-          git diff --cached --quiet || git commit -m "📊 自动更新项目数据 [$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M')]"
+          git diff --cached --quiet || git commit -m "📊 自动更新项目数据 [$(date -u -d '+8 hours' '+%Y-%m-%d %H:%M')]"
           git push
