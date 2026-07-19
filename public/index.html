@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开店助手 - 项目看板</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#333}
+.nav{background:#1677ff;padding:12px 24px;display:flex;gap:20px;align-items:center}
+.nav a{color:#fff;text-decoration:none;font-weight:500;font-size:15px}
+.nav a:hover{opacity:.8}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+h1{font-size:24px;margin-bottom:8px}
+h2{font-size:18px;margin:20px 0 12px;padding-bottom:8px;border-bottom:2px solid #1677ff}
+.subtitle{color:#666;margin-bottom:20px}
+.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.stage-bar{background:#e6f4ff;padding:10px 16px;font-weight:600;margin:16px 0 8px;border-radius:8px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#fafafa;padding:10px 12px;text-align:left;font-weight:500;color:#666;border-bottom:2px solid #e8e8e8}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f0}
+tr:hover{background:#fafafa}
+.status-pending{color:#999}
+.status-in_progress{color:#1677ff;font-weight:bold}
+.status-completed{color:#52c41a}
+.status-delayed{color:#f44336;font-weight:bold}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px}
+.badge-pending{background:#f5f5f5;color:#999}
+.badge-in_progress{background:#e6f4ff;color:#1677ff}
+.badge-completed{background:#f6ffed;color:#52c41a}
+.badge-delayed{background:#fff2f0;color:#f44336}
+.manual-tag{background:#fff7e6;color:#fa8c16;font-size:11px;padding:1px 6px;border-radius:3px;margin-left:6px}
+.empty{text-align:center;padding:60px;color:#999}
+.empty a{color:#1677ff}
+.loading{text-align:center;padding:40px;color:#999}
+.error{background:#fff2f0;color:#f44336;padding:12px;border-radius:8px;margin-bottom:16px}
+.btn{display:inline-block;padding:8px 20px;background:#1677ff;color:#fff;border-radius:6px;text-decoration:none;font-size:14px}
+.btn:hover{opacity:.9}
+.btn-sm{padding:4px 12px;font-size:12px;border-radius:4px;border:1px solid #d9d9d9;background:#fff;color:#333;cursor:pointer}
+.btn-sm:hover{border-color:#1677ff;color:#1677ff}
+.btn-sm.active{background:#1677ff;color:#fff;border-color:#1677ff}
+.filters{margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap}
+.summary{display:flex;gap:24px;margin-bottom:16px}
+.stat{padding:12px 20px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-num{font-size:24px;font-weight:bold;color:#1677ff}
+.stat-label{font-size:12px;color:#999}
+</style>
+</head>
+<body>
+<div class="nav">
+  <strong style="color:#fff;font-size:16px">🏗️ 开店助手</strong>
+  <a href="/hf-daily/">📋 项目看板</a>
+  <a href="/hf-daily/create.html">➕ 新建项目</a>
+</div>
+<div class="container">
+  <h1>📋 项目看板</h1>
+  <p class="subtitle" id="updateTime">加载中...</p>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="filters">
+    <button class="btn-sm active" onclick="filterStage('all')">全部</button>
+    <button class="btn-sm" onclick="filterStage('startup')">启动阶段</button>
+    <button class="btn-sm" onclick="filterStage('construction')">装修阶段</button>
+    <button class="btn-sm" onclick="filterStage('countdown')">倒计时</button>
+  </div>
+
+  <div id="content">
+    <div class="loading">加载项目数据中...</div>
+  </div>
+</div>
+
+<script>
+const STATUS_MAP = {pending:"待开始",in_progress:"进行中",completed:"已完成",delayed:"已延期"};
+const STATUS_ICON = {pending:"⬜",in_progress:"🔄",completed:"✅",delayed:"🔴"};
+const STAGE_MAP = {startup:"阶段一：启动",construction:"阶段二：装修",countdown:"阶段三：倒计时"};
+
+let allProjects = [];
+let currentFilter = "all";
+
+async function loadData() {
+  try {
+    const resp = await fetch("/hf-daily/data/projects.json?" + Date.now());
+    if (!resp.ok) throw new Error("数据文件不存在");
+    allProjects = await resp.json();
+  } catch(e) {
+    // fallback: try raw GitHub URL
+    try {
+      const resp = await fetch("https://raw.githubusercontent.com/eikelxia/hf-daily/main/data/projects.json?" + Date.now());
+      if (!resp.ok) throw new Error("GitHub raw also failed");
+      allProjects = await resp.json();
+    } catch(e2) {
+      document.getElementById("content").innerHTML = `
+        <div class="empty">
+          <p style="font-size:48px;margin-bottom:16px">📭</p>
+          <p>还没有项目数据</p>
+          <p style="margin-top:12px"><a href="/hf-daily/create.html">➕ 创建第一个项目</a></p>
+        </div>`;
+      document.getElementById("updateTime").textContent = "暂无数据";
+      return;
+    }
+  }
+  render();
+}
+
+function filterStage(stage) {
+  currentFilter = stage;
+  document.querySelectorAll(".filters .btn-sm").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+  render();
+}
+
+function render() {
+  const activeProjects = allProjects.filter(p => p.status === "active");
+  if (activeProjects.length === 0) {
+    document.getElementById("content").innerHTML = `<div class="empty"><p style="font-size:48px">📭</p><p>暂无活跃项目</p><p style="margin-top:12px"><a href="/hf-daily/create.html">➕ 创建新项目</a></p></div>`;
+    document.getElementById("updateTime").textContent = `数据: ${allProjects.length ? allProjects[0].created_at : '无'}`;
+    document.getElementById("summary").innerHTML = "";
+    return;
+  }
+
+  // Summary
+  let totalNodes = 0, doneNodes = 0, delayedNodes = 0;
+  activeProjects.forEach(p => {
+    p.nodes.forEach(n => {
+      totalNodes++;
+      if (n.status === "completed") doneNodes++;
+      if (n.status === "delayed") delayedNodes++;
+    });
+  });
+  document.getElementById("summary").innerHTML = `
+    <div class="stat"><div class="stat-num">${activeProjects.length}</div><div class="stat-label">活跃项目</div></div>
+    <div class="stat"><div class="stat-num">${totalNodes}</div><div class="stat-label">总节点</div></div>
+    <div class="stat"><div class="stat-num">${doneNodes}</div><div class="stat-label">已完成</div></div>
+    ${delayedNodes > 0 ? `<div class="stat"><div class="stat-num" style="color:#f44336">${delayedNodes}</div><div class="stat-label">已延期</div></div>` : ''}
+  `;
+
+  document.getElementById("updateTime").textContent = `数据更新时间: ${allProjects[0].created_at || '未知'}`;
+
+  let html = "";
+  activeProjects.forEach(proj => {
+    html += `<div class="card"><h2>${proj.name}</h2>`;
+    html += `<p style="color:#666;font-size:13px">目标开业: ${proj.opening_date} | 面积: ${proj.store_area}㎡</p>`;
+
+    let currentStage = "";
+    const nodes = proj.nodes || [];
+    const filteredNodes = currentFilter === "all" ? nodes : nodes.filter(n => n.stage === currentFilter);
+
+    filteredNodes.forEach(n => {
+      const sname = STAGE_MAP[n.stage] || n.stage;
+      if (sname !== currentStage) {
+        currentStage = sname;
+        html += `<div class="stage-bar">${sname}</div>`;
+      }
+      const s = n.status || "pending";
+      const start = n.planned_start || "手动";
+      const end = n.planned_end || "手动";
+      const isManual = !n.planned_start;
+      html += `<table><tr>
+        <td width="28%">${STATUS_ICON[s] || '⬜'} ${n.name}${isManual ? '<span class="manual-tag">手动</span>' : ''}</td>
+        <td width="22%">${start} ~ ${end}</td>
+        <td width="20%">👤 ${n.assignee}</td>
+        <td width="10%"><span class="badge badge-${s}">${STATUS_MAP[s] || s}</span></td>
+      </tr></table>`;
+    });
+
+    html += `</div>`;
+  });
+
+  document.getElementById("content").innerHTML = html;
+}
+
+loadData();
+</script>
+</body>
+</html>

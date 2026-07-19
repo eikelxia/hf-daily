@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新建项目 - 开店助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#fff;border-radius:12px;padding:40px;width:440px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+h1{font-size:24px;margin-bottom:4px}
+.sub{color:#999;font-size:14px;margin-bottom:28px}
+label{display:block;font-size:14px;color:#333;margin-bottom:6px;font-weight:500}
+input{width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:15px;margin-bottom:18px;outline:none}
+input:focus{border-color:#1677ff}
+.btn{width:100%;padding:12px;background:#1677ff;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:500}
+.btn:hover{background:#4096ff}
+.btn:disabled{background:#999;cursor:not-allowed}
+.result{margin-top:16px;padding:14px;border-radius:8px;display:none;text-align:center;font-size:14px}
+.success{background:#f6ffed;border:1px solid #b7eb8f;color:#52c41a}
+.error{background:#fff2f0;border:1px solid #ffccc7;color:#ff4d4f}
+.preview{margin-top:20px;display:none;background:#fafafa;border-radius:8px;padding:16px;font-size:13px;max-height:300px;overflow-y:auto}
+.preview h3{font-size:15px;margin-bottom:12px;color:#1677ff}
+.preview table{width:100%;border-collapse:collapse;font-size:12px}
+.preview th{background:#f0f0f0;padding:6px 8px;text-align:left;font-size:12px}
+.preview td{padding:4px 8px;border-bottom:1px solid #eee}
+.back{margin-top:20px;text-align:center}
+.back a{color:#1677ff;text-decoration:none;font-size:14px}
+.info{background:#e6f4ff;border-radius:6px;padding:12px;font-size:13px;color:#1677ff;margin-bottom:20px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>➕ 新建开店项目</h1>
+<p class="sub">填写门店信息，自动排出完整施工时间线</p>
+
+<div class="info">
+💡 创建后系统会自动推送到智能表格，并每天在群里发送节点提醒。
+</div>
+
+<form id="form">
+<label>项目名称</label>
+<input id="name" placeholder="例如：万象城店" required>
+
+<label>门店名称</label>
+<input id="store" placeholder="例如：万象城店" required>
+
+<label>目标开业日期</label>
+<input id="date" type="date" required>
+
+<label>门店面积（㎡）</label>
+<input id="area" type="number" placeholder="80" required min="20" max="500">
+
+<button type="submit" class="btn">🚀 创建项目并生成时间线</button>
+</form>
+
+<div id="result" class="result"></div>
+
+<div id="preview" class="preview"></div>
+
+<div class="back"><a href="/hf-daily/">← 返回看板</a></div>
+</div>
+
+<script>
+document.getElementById("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button");
+  const result = document.getElementById("result");
+  const preview = document.getElementById("preview");
+
+  const name = document.getElementById("name").value.trim();
+  const store = document.getElementById("store").value.trim();
+  const dateVal = document.getElementById("date").value;
+  const area = parseFloat(document.getElementById("area").value);
+
+  btn.textContent = "计算时间线中...";
+  btn.disabled = true;
+  result.style.display = "none";
+  preview.style.display = "none";
+
+  // 在本地计算时间线预览
+  const nodes = generateTimeline(dateVal, area);
+
+  // 显示预览
+  let html = `<h3>📅 ${name} - 节点时间线预览</h3>`;
+  html += `<p style="color:#666;margin-bottom:8px">开业: ${dateVal} | 面积: ${area}㎡ | 共 ${nodes.length} 个节点</p>`;
+  html += `<table><tr><th>节点</th><th>阶段</th><th>开始</th><th>结束</th><th>负责人</th></tr>`;
+  const stages = {startup:"启动",construction:"装修",countdown:"倒计时"};
+  nodes.forEach(n => {
+    const start = n.planned_start || "手动触发";
+    const end = n.planned_end || "手动触发";
+    html += `<tr><td>${n.name}</td><td>${stages[n.stage]||n.stage}</td><td>${start}</td><td>${end}</td><td>${n.assignee}</td></tr>`;
+  });
+  html += `</table>`;
+  preview.innerHTML = html;
+  preview.style.display = "block";
+
+  // 构建下载数据
+  const projectData = {
+    name, store_name: store,
+    opening_date: dateVal,
+    store_area: area,
+    nodes: nodes.map(n => ({
+      name: n.name,
+      node_type: n.node_type,
+      stage: n.stage,
+      status: "pending",
+      planned_start: n.planned_start,
+      planned_end: n.planned_end,
+      assignee: n.assignee,
+      depends_on: n.depends_on,
+      is_critical: n.is_critical,
+      duration: n.duration,
+      sort_order: n.sort_order,
+    }))
+  };
+
+  result.className = "result success";
+  result.innerHTML = `
+    <p style="font-size:16px;font-weight:bold;margin-bottom:8px">✅ 时间线已生成！</p>
+    <p>共 ${nodes.length} 个节点，请下载数据文件并提交到 GitHub</p>
+    <button onclick="downloadData()" style="margin-top:12px;padding:8px 20px;background:#52c41a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">
+      📥 下载 projects.json
+    </button>
+    <p style="font-size:12px;color:#999;margin-top:8px">下载后将文件替换到 GitHub 仓库的 data/ 目录中</p>
+  `;
+  result.style.display = "block";
+
+  window._projectData = projectData;
+  btn.textContent = "🚀 创建项目并生成时间线";
+  btn.disabled = false;
+});
+
+function downloadData() {
+  if (!window._projectData) return;
+
+  // Try to load existing data first, then append
+  let existing = [];
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "/hf-daily/data/projects.json", false);
+    xhr.send();
+    if (xhr.status === 200) {
+      existing = JSON.parse(xhr.responseText);
+    }
+  } catch(e) {}
+
+  const newProject = {
+    id: String(existing.length + 1),
+    name: window._projectData.name,
+    store_name: window._projectData.store_name,
+    opening_date: window._projectData.opening_date,
+    store_area: window._projectData.store_area,
+    status: "active",
+    created_at: new Date().toISOString().split("T")[0],
+    nodes: window._projectData.nodes
+  };
+
+  existing.push(newProject);
+
+  const blob = new Blob([JSON.stringify(existing, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "projects.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---- 本地时间线计算（和 Python 端逻辑一致）----
+function generateTimeline(openingDateStr, area) {
+  const openingDate = new Date(openingDateStr + "T00:00:00");
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function subDays(d, n) { const r = new Date(d); r.setDate(r.getDate()-n); return r; }
+  function fmt(d) { return d.toISOString().split("T")[0]; }
+
+  const calcWaterElec = a => a <= 60 ? 1 : a <= 100 ? 2 : 3;
+  const calcTile = a => Math.ceil(a / 50);
+  const calcPaint = a => a <= 100 ? 5 : Math.ceil(a / 100) * 5;
+  const calcCabinet = a => a <= 60 ? 7 : 14;
+
+  const MANUAL = new Set(["合同签约","平面图确认","效果图确认","施工图确认","空调确认","消防改造"]);
+
+  const templates = [
+    ["前期资料搜集","milestone","startup",2,null,"我",false],
+    ["催促基础资料提交","milestone","startup",1,"前期资料搜集","我",false],
+    ["提供门店完全尺寸(CAD)","milestone","startup",2,null,"加盟商",false],
+    ["平面图出图","milestone","startup",2,"提供门店完全尺寸(CAD)","我",false],
+    ["平面图确认","milestone","startup",1,"平面图出图","加盟商",false],
+    ["效果图出图","milestone","startup",3,"平面图确认","我",false],
+    ["效果图确认","milestone","startup",1,"效果图出图","加盟商",false],
+    ["施工图出图","milestone","startup",3,"效果图确认","我",false],
+    ["施工图确认","milestone","startup",1,"施工图出图","加盟商",false],
+    ["合同签约","milestone","startup",2,null,"加盟商",false],
+    ["营业执照办理","milestone","startup",7,"合同签约","加盟商",true],
+    ["预定柜体","construction","construction",calcCabinet(area),"施工图确认","加盟商",false],
+    ["空调确认","construction","construction",2,null,"加盟商",false],
+    ["办理进场资料","construction","construction",1,"施工图确认","加盟商/施工负责人",false],
+    ["人员招聘","milestone","construction",1,"办理进场资料","加盟商+小朱",false],
+    ["砖块隔墙","construction","construction",2,"办理进场资料","加盟商/施工负责人",false],
+    ["水电改造","construction","construction",calcWaterElec(area),"砖块隔墙","加盟商/施工负责人",false],
+    ["地砖铺贴","construction","construction",calcTile(area),"水电改造","加盟商/施工负责人",false],
+    ["消防改造","construction","construction",3,null,"加盟商+二消",false],
+    ["木工","construction","construction",2,"地砖铺贴","加盟商/施工负责人",false],
+    ["广告字预订","construction","construction",5,"木工","加盟商/施工负责人",false],
+    ["漆工","construction","construction",calcPaint(area),"木工","加盟商/施工负责人",false],
+    ["柜体安装","construction","construction",2,"漆工","加盟商/施工负责人",false],
+    ["灯具安装","construction","construction",2,"漆工","加盟商/施工负责人",false],
+    ["广告字安装","construction","construction",1,"漆工","加盟商/施工负责人",false],
+    ["美缝保洁","construction","construction",1,"柜体安装","加盟商/施工负责人",false],
+    ["家具物料进场","construction","construction",2,"美缝保洁","加盟商/施工负责人",false],
+    ["装修验收","milestone","construction",1,"家具物料进场","加盟商/施工负责人",true],
+    ["货品货单确认","countdown","countdown",14,null,"王雅",false],
+    ["设计物料确认","countdown","countdown",7,null,"陈哇塞",false],
+    ["开业活动确认","countdown","countdown",7,null,"陈哇塞",false],
+    ["线上培训","countdown","countdown",4,null,"小朱",false],
+    ["培训时间确认","countdown","countdown",7,null,"我",false],
+    ["开业活动物料到场","countdown","countdown",3,null,"加盟商",false],
+    ["美团/抖音/银豹搭建","countdown","countdown",3,null,"陈哇塞",false],
+    ["线下到店培训","countdown","countdown",2,null,"我",false],
+    ["开业验收","countdown","countdown",1,null,"我",false],
+  ];
+
+  const nodes = templates.map(([name, ntype, stage, duration, dependsOn, assignee, isCritical], i) => ({
+    name, node_type: ntype, stage, duration,
+    planned_start: null, planned_end: null,
+    assignee, depends_on: dependsOn,
+    is_critical: isCritical, sort_order: i,
+  }));
+
+  const nodeMap = {};
+  nodes.forEach(n => { nodeMap[n.name] = n; });
+
+  // Countdown
+  nodes.forEach(n => {
+    if (n.stage === "countdown") {
+      n.planned_end = fmt(subDays(openingDate, n.duration));
+      n.planned_start = n.planned_end;
+    }
+  });
+
+  // Startup
+  let currentDate = today;
+  const startupOrder = ["前期资料搜集","催促基础资料提交","提供门店完全尺寸(CAD)","平面图出图","平面图确认","效果图出图","效果图确认","施工图出图","施工图确认"];
+  startupOrder.forEach(name => {
+    const n = nodeMap[name];
+    if (!n || n.stage !== "startup") return;
+    if (MANUAL.has(name)) { n.planned_start = null; n.planned_end = null; return; }
+    const dep = n.depends_on;
+    if (dep && nodeMap[dep] && nodeMap[dep].planned_end) {
+      currentDate = new Date(nodeMap[dep].planned_end + "T00:00:00");
+    }
+    n.planned_start = fmt(currentDate);
+    n.planned_end = fmt(addDays(currentDate, n.duration));
+    currentDate = new Date(n.planned_end + "T00:00:00");
+  });
+
+  // Construction
+  let consStart = nodeMap["施工图确认"]?.planned_end || nodeMap["施工图出图"]?.planned_end || fmt(today);
+  currentDate = new Date(consStart + "T00:00:00");
+
+  const consOrder = ["预定柜体","办理进场资料","人员招聘","砖块隔墙","水电改造","地砖铺贴","木工","漆工","广告字预订","柜体安装","灯具安装","广告字安装","美缝保洁","家具物料进场","装修验收"];
+  consOrder.forEach(name => {
+    const n = nodeMap[name];
+    if (!n || n.stage !== "construction") return;
+    if (MANUAL.has(name)) return;
+    const dep = n.depends_on;
+    if (dep && nodeMap[dep] && nodeMap[dep].planned_end) {
+      currentDate = new Date(nodeMap[dep].planned_end + "T00:00:00");
+    }
+    n.planned_start = fmt(currentDate);
+    n.planned_end = fmt(addDays(currentDate, n.duration));
+    currentDate = new Date(n.planned_end + "T00:00:00");
+  });
+
+  // Parallel nodes
+  const woodEnd = nodeMap["木工"]?.planned_end;
+  if (woodEnd) {
+    ["漆工","广告字预订"].forEach(name => {
+      const n = nodeMap[name];
+      if (n && !n.planned_start) {
+        n.planned_start = woodEnd;
+        n.planned_end = fmt(addDays(new Date(woodEnd+"T00:00:00"), n.duration));
+      }
+    });
+  }
+
+  const paintEnd = nodeMap["漆工"]?.planned_end;
+  if (paintEnd) {
+    ["柜体安装","灯具安装","广告字安装"].forEach(name => {
+      const n = nodeMap[name];
+      if (n && !n.planned_start) {
+        n.planned_start = paintEnd;
+        n.planned_end = fmt(addDays(new Date(paintEnd+"T00:00:00"), n.duration));
+      }
+    });
+  }
+
+  return nodes;
+}
+</script>
+</body>
+</html>

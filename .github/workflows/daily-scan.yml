@@ -1,0 +1,35 @@
+name: Daily Reminder Scan
+
+on:
+  schedule:
+    # 北京时间每天 9:00 和 14:00（UTC 1:00 和 6:00）
+    - cron: '0 1,6 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run daily scan
+        env:
+          WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
+          SMARTSHEET_WEBHOOK: ${{ secrets.SMARTSHEET_WEBHOOK }}
+        run: python scripts/daily_scan.py
+
+      - name: Commit data changes
+        run: |
+          git config user.name "hf-daily-bot"
+          git config user.email "bot@hf-daily.local"
+          git add data/
+          git diff --cached --quiet || git commit -m "📊 自动更新项目数据 [$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M')]"
+          git push

@@ -1,0 +1,48 @@
+name: Create Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: '项目名称'
+        required: true
+        type: string
+      store_name:
+        description: '门店名称'
+        required: true
+        type: string
+      opening_date:
+        description: '目标开业日期 (YYYY-MM-DD)'
+        required: true
+        type: string
+      store_area:
+        description: '门店面积 (㎡)'
+        required: true
+        type: number
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create project
+        run: |
+          python scripts/create_project.py \
+            --name "${{ inputs.project_name }}" \
+            --store "${{ inputs.store_name }}" \
+            --date "${{ inputs.opening_date }}" \
+            --area ${{ inputs.store_area }}
+
+      - name: Commit and push
+        run: |
+          git config user.name "hf-daily-bot"
+          git config user.email "bot@hf-daily.local"
+          git add data/
+          git diff --cached --quiet || git commit -m "➕ 新建项目: ${{ inputs.project_name }}"
+          git push
