@@ -50,7 +50,7 @@ tr:hover{background:#fafafa}
 <div class="nav">
   <strong style="color:#fff;font-size:16px">🏗️ 开店助手</strong>
   <a href="/hf-daily/">📋 项目看板</a>
-  <a href="/hf-daily/create.html">➕ 新建项目</a>
+  <a href="/hf-daily/create.html" id="navCreate">➕ 新建项目</a>
 </div>
 <div class="container">
   <h1>📋 项目看板</h1>
@@ -77,6 +77,13 @@ const STAGE_MAP = {startup:"阶段一：启动",construction:"阶段二：装修
 
 let allProjects = [];
 let currentFilter = "all";
+let viewProjectId = null; // ?project=ID 过滤
+
+// 从 URL 读取 project 参数
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has("project")) {
+  viewProjectId = urlParams.get("project");
+}
 
 async function loadData() {
   try {
@@ -100,6 +107,17 @@ async function loadData() {
       return;
     }
   }
+
+  // 按 project 参数过滤
+  if (viewProjectId) {
+    allProjects = allProjects.filter(p => String(p.id) === viewProjectId);
+    // 加盟商视角：隐藏新建按钮和过滤器
+    const navCreate = document.getElementById("navCreate");
+    if (navCreate) navCreate.style.display = "none";
+    const filtersDiv = document.querySelector(".filters");
+    if (filtersDiv) filtersDiv.style.display = "none";
+  }
+
   render();
 }
 
