@@ -321,11 +321,13 @@ def run_daily_scan():
     now = datetime.now(BJT)
     current_hour = now.hour
 
+    BASE_URL = "https://eikelxia.github.io/hf-daily/confirm.html"
     projects = load_projects()
     sent_count = 0
 
     for proj in projects:
         proj_name = proj["name"]
+        pid = proj.get("id", "")
         nodes = proj.get("nodes", [])
 
         remindable = get_remindable_nodes(nodes, today)
@@ -334,33 +336,38 @@ def run_daily_scan():
         if not in_window:
             for node in remindable.get("start_confirm", []):
                 assignee_names = node["assignee"].replace("+", "、")
+                c_url = f"{BASE_URL}?project_id={pid}&node_id={node['sort_order']}&action=confirm"
+                d_url = f"{BASE_URL}?project_id={pid}&node_id={node['sort_order']}&action=delay&days=1"
                 msg = (
                     f"【{proj_name}】\n"
                     f"节点「{node['name']}」将于 **{node.get('planned_start', '')}** 开始\n"
                     f"负责人：{assignee_names}\n\n"
-                    f"请确认是否按时启动？"
+                    f"[确认开始]({c_url})  |  [延期1天]({d_url})"
                 )
                 send_wecom(webhook_url, "markdown", msg)
                 sent_count += 1
 
         for node in remindable.get("completion_check", []):
             assignee_names = node["assignee"].replace("+", "、")
+            c_url = f"{BASE_URL}?project_id={pid}&node_id={node['sort_order']}&action=complete"
+            d_url = f"{BASE_URL}?project_id={pid}&node_id={node['sort_order']}&action=delay&days=1"
             msg = (
                 f"【{proj_name}】\n"
                 f"节点「{node['name']}」计划于 **{node.get('planned_end', '')}** 完成\n"
                 f"负责人：{assignee_names}\n\n"
-                f"请确认是否已完成？"
+                f"[确认完成]({c_url})  |  [延期1天]({d_url})"
             )
             send_wecom(webhook_url, "markdown", msg)
             sent_count += 1
 
         for node in remindable.get("daily_chase", []):
             assignee_names = node["assignee"].replace("+", "、")
+            c_url = f"{BASE_URL}?project_id={pid}&node_id={node['sort_order']}&action=complete"
             msg = (
                 f"【{proj_name}】\n"
-                f"节点「{node['name']}」已超期！截止：**{node.get('planned_end', '')}**\n"
+                f"🔴 节点「{node['name']}」已超期！截止：**{node.get('planned_end', '')}**\n"
                 f"负责人：{assignee_names}\n\n"
-                f"请尽快完成！"
+                f"[确认完成]({c_url})"
             )
             send_wecom(webhook_url, "markdown", msg)
             sent_count += 1

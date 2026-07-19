@@ -1,0 +1,100 @@
+name: Confirm Node
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: '项目ID'
+        required: true
+        type: string
+      node_id:
+        description: '节点ID (sort_order)'
+        required: true
+        type: string
+      action:
+        description: '操作类型'
+        required: true
+        type: choice
+        options:
+          - confirm
+          - complete
+          - delay
+      days:
+        description: '延期天数'
+        required: false
+        type: number
+        default: 1
+
+permissions:
+  contents: write
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Update node status
+        run: |
+          python -c "
+          import json
+          from datetime import date
+
+          with open('data/projects.json', 'r') as f:
+              data = json.load(f)
+
+          pid = '${{ inputs.project_id }}'
+          nid = '${{ inputs.node_id }}'
+          action = '${{ inputs.action }}'
+          days = ${{ inputs.days || 1 }}
+          today = date.today().isoformat()
+
+          found = False
+          for proj in data:
+              if str(proj['id']) == pid:
+                  for node in proj['nodes']:
+                      if str(node['sort_order']) == nid:
+                          found = True
+                          if action == 'confirm':
+                              node['status'] = 'in_progress'
+                              node['actual_start'] = today
+                          elif action == 'complete':
+                              node['status'] = 'completed'
+                              node['actual_end'] = today
+                          elif action == 'delay':
+                              node['status'] = 'delayed'
+                              from datetime import timedelta
+                              if node.get('planned_start'):
+                                  d = date.fromisoformat(node['planned_start']) + timedelta(days=days)
+                                  node['planned_start'] = d.isoformat()
+                              if node.get('planned_end'):
+                                  d = date.fromisoformat(node['planned_end']) + timedelta(days=days)
+                                  node['planned_end'] = d.isoformat()
+                          print(f'Updated: {proj[\"name\"]} - {node[\"name\"]} -> {node[\"status\"]}')
+                          break
+                  break
+
+          if not found:
+              print(f'Not found: project={pid}, node={nid}')
+              exit(1)
+
+          with open('data/projects.json', 'w') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          "
+
+      - name: Commit and push
+        run: |
+          git config user.name "hf-daily-bot"
+          git config user.email "bot@hf-daily.local"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "✅ ${{ inputs.action }}: project=${{ inputs.project_id }} node=${{ inputs.node_id }}"
+            git push
+          fi

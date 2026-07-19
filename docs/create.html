@@ -6,37 +6,52 @@
 <title>新建项目 - 开店助手</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
-.card{background:#fff;border-radius:12px;padding:40px;width:440px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
-h1{font-size:24px;margin-bottom:4px}
-.sub{color:#999;font-size:14px;margin-bottom:28px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5}
+.container{max-width:600px;margin:0 auto;padding:20px}
+.card{background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px}
+h1{font-size:22px;margin-bottom:4px}
+.sub{color:#999;font-size:14px;margin-bottom:24px}
 label{display:block;font-size:14px;color:#333;margin-bottom:6px;font-weight:500}
-input{width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:15px;margin-bottom:18px;outline:none}
-input:focus{border-color:#1677ff}
+input,select{width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:15px;margin-bottom:16px;outline:none}
+input:focus,select:focus{border-color:#1677ff}
 .btn{width:100%;padding:12px;background:#1677ff;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:500}
 .btn:hover{background:#4096ff}
 .btn:disabled{background:#999;cursor:not-allowed}
-.result{margin-top:16px;padding:14px;border-radius:8px;display:none;text-align:center;font-size:14px}
+.btn-green{background:#52c41a}.btn-green:hover{background:#73d13d}
+.result{margin-top:16px;padding:14px;border-radius:8px;display:none;font-size:14px}
 .success{background:#f6ffed;border:1px solid #b7eb8f;color:#52c41a}
 .error{background:#fff2f0;border:1px solid #ffccc7;color:#ff4d4f}
-.preview{margin-top:20px;display:none;background:#fafafa;border-radius:8px;padding:16px;font-size:13px;max-height:300px;overflow-y:auto}
+.preview{display:none;background:#fafafa;border-radius:8px;padding:16px;font-size:13px;max-height:400px;overflow-y:auto;margin-top:16px}
 .preview h3{font-size:15px;margin-bottom:12px;color:#1677ff}
 .preview table{width:100%;border-collapse:collapse;font-size:12px}
 .preview th{background:#f0f0f0;padding:6px 8px;text-align:left;font-size:12px}
 .preview td{padding:4px 8px;border-bottom:1px solid #eee}
-.back{margin-top:20px;text-align:center}
-.back a{color:#1677ff;text-decoration:none;font-size:14px}
-.info{background:#e6f4ff;border-radius:6px;padding:12px;font-size:13px;color:#1677ff;margin-bottom:20px;line-height:1.6}
+.preview tr:nth-child(even){background:#fafafa}
+.nav{background:#1677ff;padding:12px 20px;display:flex;gap:20px;align-items:center}
+.nav a{color:#fff;text-decoration:none;font-weight:500;font-size:14px}
+.info{background:#fff7e6;border:1px solid #ffd591;border-radius:6px;padding:12px;font-size:13px;color:#ad6800;margin-bottom:20px;line-height:1.6}
+.step{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.step-num{background:#1677ff;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+.step-text{font-size:13px;color:#333}
+.stats{display:flex;gap:12px;margin:16px 0}
+.stat{padding:8px 16px;background:#f5f5f5;border-radius:6px;text-align:center}
+.stat-num{font-size:18px;font-weight:bold;color:#1677ff}
+.stat-label{font-size:11px;color:#999}
+.json-box{background:#1e1e1e;color:#d4d4d4;border-radius:8px;padding:12px;font-size:12px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:12px 0;font-family:monospace}
+.copy-btn{padding:6px 16px;background:#fff;border:1px solid #d9d9d9;border-radius:6px;cursor:pointer;font-size:13px}
+.copy-btn:hover{border-color:#1677ff;color:#1677ff}
 </style>
 </head>
 <body>
+<div class="nav">
+  <strong style="color:#fff;font-size:15px">🏗️ 开店助手</strong>
+  <a href="/hf-daily/">📋 项目看板</a>
+  <a href="/hf-daily/create" style="opacity:.8">➕ 新建项目</a>
+</div>
+<div class="container">
 <div class="card">
 <h1>➕ 新建开店项目</h1>
-<p class="sub">填写门店信息，自动排出完整施工时间线</p>
-
-<div class="info">
-💡 创建后系统会自动推送到智能表格，并每天在群里发送节点提醒。
-</div>
+<p class="sub">填写门店信息，自动排出完整施工时间线，同步到智能表格和群提醒</p>
 
 <form id="form">
 <label>项目名称</label>
@@ -51,14 +66,12 @@ input:focus{border-color:#1677ff}
 <label>门店面积（㎡）</label>
 <input id="area" type="number" placeholder="80" required min="20" max="500">
 
-<button type="submit" class="btn">🚀 创建项目并生成时间线</button>
+<button type="submit" class="btn">🚀 生成项目时间线</button>
 </form>
 
 <div id="result" class="result"></div>
-
 <div id="preview" class="preview"></div>
-
-<div class="back"><a href="/hf-daily/">← 返回看板</a></div>
+</div>
 </div>
 
 <script>
@@ -73,98 +86,111 @@ document.getElementById("form").addEventListener("submit", async e => {
   const dateVal = document.getElementById("date").value;
   const area = parseFloat(document.getElementById("area").value);
 
-  btn.textContent = "计算时间线中...";
+  btn.textContent = "⏳ 计算中...";
   btn.disabled = true;
   result.style.display = "none";
   preview.style.display = "none";
 
-  // 在本地计算时间线预览
   const nodes = generateTimeline(dateVal, area);
 
-  // 显示预览
-  let html = `<h3>📅 ${name} - 节点时间线预览</h3>`;
-  html += `<p style="color:#666;margin-bottom:8px">开业: ${dateVal} | 面积: ${area}㎡ | 共 ${nodes.length} 个节点</p>`;
-  html += `<table><tr><th>节点</th><th>阶段</th><th>开始</th><th>结束</th><th>负责人</th></tr>`;
+  // 统计
+  const startupCount = nodes.filter(n => n.stage === "startup").length;
+  const consCount = nodes.filter(n => n.stage === "construction").length;
+  const cdCount = nodes.filter(n => n.stage === "countdown").length;
+
+  // 预览
   const stages = {startup:"启动",construction:"装修",countdown:"倒计时"};
+  let previewHTML = `<h3>📅 ${name} — 节点时间线</h3>`;
+  previewHTML += `<div class="stats">
+    <div class="stat"><div class="stat-num">${nodes.length}</div><div class="stat-label">总节点</div></div>
+    <div class="stat"><div class="stat-num">${startupCount}</div><div class="stat-label">启动阶段</div></div>
+    <div class="stat"><div class="stat-num">${consCount}</div><div class="stat-label">装修阶段</div></div>
+    <div class="stat"><div class="stat-num">${cdCount}</div><div class="stat-label">倒计时</div></div>
+  </div>`;
+  previewHTML += `<table><tr><th>节点</th><th>阶段</th><th>开始</th><th>结束</th><th>负责人</th></tr>`;
   nodes.forEach(n => {
     const start = n.planned_start || "手动触发";
     const end = n.planned_end || "手动触发";
-    html += `<tr><td>${n.name}</td><td>${stages[n.stage]||n.stage}</td><td>${start}</td><td>${end}</td><td>${n.assignee}</td></tr>`;
+    previewHTML += `<tr><td>${n.name}</td><td>${stages[n.stage]}</td><td>${start}</td><td>${end}</td><td>${n.assignee}</td></tr>`;
   });
-  html += `</table>`;
-  preview.innerHTML = html;
+  previewHTML += `</table>`;
+  preview.innerHTML = previewHTML;
   preview.style.display = "block";
 
-  // 构建下载数据
-  const projectData = {
-    name, store_name: store,
+  // 构建完整数据
+  const newProject = {
+    id: "",
+    name,
+    store_name: store,
     opening_date: dateVal,
     store_area: area,
+    status: "active",
+    created_at: new Date().toISOString().split("T")[0],
     nodes: nodes.map(n => ({
-      name: n.name,
-      node_type: n.node_type,
-      stage: n.stage,
+      name: n.name, node_type: n.node_type, stage: n.stage,
       status: "pending",
-      planned_start: n.planned_start,
-      planned_end: n.planned_end,
-      assignee: n.assignee,
-      depends_on: n.depends_on,
-      is_critical: n.is_critical,
-      duration: n.duration,
-      sort_order: n.sort_order,
+      planned_start: n.planned_start, planned_end: n.planned_end,
+      actual_start: null, actual_end: null,
+      assignee: n.assignee, depends_on: n.depends_on,
+      is_critical: n.is_critical, duration: n.duration, sort_order: n.sort_order,
     }))
   };
 
+  // 加载已有数据并合并
+  let existing = [];
+  try {
+    const resp = await fetch("https://raw.githubusercontent.com/eikelxia/hf-daily/master/data/projects.json");
+    if (resp.ok) existing = await resp.json();
+  } catch(e) {}
+
+  newProject.id = String(existing.length + 1);
+  existing.push(newProject);
+  const finalJSON = JSON.stringify(existing, null, 2);
+
+  window._finalJSON = finalJSON;
+
   result.className = "result success";
   result.innerHTML = `
-    <p style="font-size:16px;font-weight:bold;margin-bottom:8px">✅ 时间线已生成！</p>
-    <p>共 ${nodes.length} 个节点，请下载数据文件并提交到 GitHub</p>
-    <button onclick="downloadData()" style="margin-top:12px;padding:8px 20px;background:#52c41a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">
-      📥 下载 projects.json
-    </button>
-    <p style="font-size:12px;color:#999;margin-top:8px">下载后将文件替换到 GitHub 仓库的 data/ 目录中</p>
+    <p style="font-size:16px;font-weight:bold;margin-bottom:8px">✅ 时间线已生成！共 ${nodes.length} 个节点</p>
+    <div style="margin-top:12px;text-align:left">
+      <div class="step"><div class="step-num">1</div><div class="step-text">点击下方按钮复制 JSON 数据</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">点击「打开 GitHub」跳转到编辑页面</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">全选粘贴 → 点击 Commit changes 保存</div></div>
+    </div>
+    <div style="margin-top:12px">
+      <button onclick="copyJSON()" id="copyBtn" class="copy-btn" style="margin-right:8px">📋 复制 JSON</button>
+      <button onclick="openGitHub()" class="btn" style="width:auto;padding:6px 20px;font-size:13px">🔗 打开 GitHub 编辑页面</button>
+    </div>
+    <p style="font-size:12px;color:#999;margin-top:8px">保存后系统会自动同步到智能表格，定时提醒也会正常运作</p>
   `;
   result.style.display = "block";
 
-  window._projectData = projectData;
-  btn.textContent = "🚀 创建项目并生成时间线";
+  btn.textContent = "🚀 生成项目时间线";
   btn.disabled = false;
 });
 
-function downloadData() {
-  if (!window._projectData) return;
+function copyJSON() {
+  if (!window._finalJSON) return;
+  navigator.clipboard.writeText(window._finalJSON).then(() => {
+    const btn = document.getElementById("copyBtn");
+    btn.textContent = "✅ 已复制！";
+    setTimeout(() => { btn.textContent = "📋 复制 JSON"; }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement("textarea");
+    ta.value = window._finalJSON;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    const btn = document.getElementById("copyBtn");
+    btn.textContent = "✅ 已复制！";
+    setTimeout(() => { btn.textContent = "📋 复制 JSON"; }, 2000);
+  });
+}
 
-  // Try to load existing data first, then append
-  let existing = [];
-  try {
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", "/hf-daily/data/projects.json", false);
-    xhr.send();
-    if (xhr.status === 200) {
-      existing = JSON.parse(xhr.responseText);
-    }
-  } catch(e) {}
-
-  const newProject = {
-    id: String(existing.length + 1),
-    name: window._projectData.name,
-    store_name: window._projectData.store_name,
-    opening_date: window._projectData.opening_date,
-    store_area: window._projectData.store_area,
-    status: "active",
-    created_at: new Date().toISOString().split("T")[0],
-    nodes: window._projectData.nodes
-  };
-
-  existing.push(newProject);
-
-  const blob = new Blob([JSON.stringify(existing, null, 2)], {type: "application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "projects.json";
-  a.click();
-  URL.revokeObjectURL(url);
+function openGitHub() {
+  window.open("https://github.com/eikelxia/hf-daily/edit/master/data/projects.json", "_blank");
 }
 
 // ---- 本地时间线计算（和 Python 端逻辑一致）----
@@ -234,7 +260,6 @@ function generateTimeline(openingDateStr, area) {
   const nodeMap = {};
   nodes.forEach(n => { nodeMap[n.name] = n; });
 
-  // Countdown
   nodes.forEach(n => {
     if (n.stage === "countdown") {
       n.planned_end = fmt(subDays(openingDate, n.duration));
@@ -242,7 +267,6 @@ function generateTimeline(openingDateStr, area) {
     }
   });
 
-  // Startup
   let currentDate = today;
   const startupOrder = ["前期资料搜集","催促基础资料提交","提供门店完全尺寸(CAD)","平面图出图","平面图确认","效果图出图","效果图确认","施工图出图","施工图确认"];
   startupOrder.forEach(name => {
@@ -258,7 +282,6 @@ function generateTimeline(openingDateStr, area) {
     currentDate = new Date(n.planned_end + "T00:00:00");
   });
 
-  // Construction
   let consStart = nodeMap["施工图确认"]?.planned_end || nodeMap["施工图出图"]?.planned_end || fmt(today);
   currentDate = new Date(consStart + "T00:00:00");
 
@@ -276,7 +299,6 @@ function generateTimeline(openingDateStr, area) {
     currentDate = new Date(n.planned_end + "T00:00:00");
   });
 
-  // Parallel nodes
   const woodEnd = nodeMap["木工"]?.planned_end;
   if (woodEnd) {
     ["漆工","广告字预订"].forEach(name => {

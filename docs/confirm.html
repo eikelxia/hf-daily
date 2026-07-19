@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>确认操作 - 开店助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{text-align:center;background:#fff;border-radius:12px;padding:48px 40px;width:400px;box-shadow:0 2px 12px rgba(0,0,0,.1)}
+h1{font-size:20px;margin-bottom:8px}
+p{color:#666;margin-bottom:24px;font-size:14px}
+.success{color:#52c41a}
+.error{color:#f44336}
+.btn{display:inline-block;padding:10px 24px;background:#1677ff;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;margin:6px;border:none;cursor:pointer}
+.btn:hover{background:#4096ff}
+.btn:disabled{background:#999;cursor:not-allowed}
+.detail{text-align:left;background:#fafafa;border-radius:8px;padding:16px;margin:16px 0;font-size:13px;line-height:1.8}
+.detail strong{color:#333}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid #1677ff;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.warn{background:#fff7e6;border:1px solid #ffd591;border-radius:6px;padding:10px;font-size:12px;color:#ad6800;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="card">
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="color:#999">正在提交确认...</p>
+</div>
+<div id="result" style="display:none"></div>
+<div id="error" style="display:none"></div>
+</div>
+<script>
+const params = new URLSearchParams(window.location.search);
+const projectId = params.get("project_id");
+const nodeId = params.get("node_id");
+const action = params.get("action") || "confirm";
+const days = parseInt(params.get("days") || "1");
+
+const actionLabels = { confirm: "确认开始", complete: "确认完成", delay: `延期 ${days} 天` };
+
+async function submitConfirm() {
+  try {
+    // 使用 GitHub API 触发 workflow_dispatch
+    // 需要一个有 repo 权限的 token —— 但我们不能在前端暴露
+    // 所以改用更简单的方式：让用户手动在 GitHub 上操作
+
+    // 实际上，我们可以用 GitHub Actions 的 repository_dispatch
+    // 但这需要 token。最实际的方式：提供手动步骤指引。
+
+    // 先用最简单的方式：直接告诉用户去 GitHub Actions 手动触发
+    showManualSteps();
+  } catch (e) {
+    showError(`错误: ${e.message}`);
+  }
+}
+
+function showManualSteps() {
+  const label = actionLabels[action] || action;
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("result").style.display = "block";
+  document.getElementById("result").innerHTML = `
+    <h1 class="success">📋 确认步骤</h1>
+    <div class="detail">
+      <strong>操作:</strong> ${label}<br>
+      <strong>项目ID:</strong> ${projectId}<br>
+      <strong>节点ID:</strong> ${nodeId}
+      ${action === 'delay' ? `<br><strong>延期天数:</strong> ${days}` : ''}
+    </div>
+    <p style="font-size:13px;color:#666">请前往 GitHub Actions 手动触发确认：</p>
+    <a class="btn" href="https://github.com/eikelxia/hf-daily/actions/workflows/confirm-node.yml" target="_blank">
+      🔗 打开 Confirm Node 工作流
+    </a>
+    <div class="warn">
+      ⚠️ 点击后点击「Run workflow」→ 填入上方参数 → 点击绿色按钮运行
+    </div>
+    <a class="btn" href="/hf-daily/" style="background:#f5f5f5;color:#333">返回看板</a>
+  `;
+}
+
+function showError(msg) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("error").style.display = "block";
+  document.getElementById("error").innerHTML = `
+    <h1 class="error">❌ 出错了</h1>
+    <p>${msg}</p>
+    <a class="btn" href="/hf-daily/">返回看板</a>
+  `;
+}
+
+submitConfirm();
+</script>
+</body>
+</html>
