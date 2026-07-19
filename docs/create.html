@@ -29,17 +29,13 @@ input:focus,select:focus{border-color:#1677ff}
 .preview tr:nth-child(even){background:#fafafa}
 .nav{background:#1677ff;padding:12px 20px;display:flex;gap:20px;align-items:center}
 .nav a{color:#fff;text-decoration:none;font-weight:500;font-size:14px}
-.info{background:#fff7e6;border:1px solid #ffd591;border-radius:6px;padding:12px;font-size:13px;color:#ad6800;margin-bottom:20px;line-height:1.6}
-.step{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.step-num{background:#1677ff;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
-.step-text{font-size:13px;color:#333}
 .stats{display:flex;gap:12px;margin:16px 0}
 .stat{padding:8px 16px;background:#f5f5f5;border-radius:6px;text-align:center}
 .stat-num{font-size:18px;font-weight:bold;color:#1677ff}
 .stat-label{font-size:11px;color:#999}
-.json-box{background:#1e1e1e;color:#d4d4d4;border-radius:8px;padding:12px;font-size:12px;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:12px 0;font-family:monospace}
-.copy-btn{padding:6px 16px;background:#fff;border:1px solid #d9d9d9;border-radius:6px;cursor:pointer;font-size:13px}
-.copy-btn:hover{border-color:#1677ff;color:#1677ff}
+.loading{display:none;text-align:center;padding:40px}
+.loading .spinner{width:40px;height:40px;border:3px solid #e8e8e8;border-top-color:#1677ff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -51,7 +47,7 @@ input:focus,select:focus{border-color:#1677ff}
 <div class="container">
 <div class="card">
 <h1>➕ 新建开店项目</h1>
-<p class="sub">填写门店信息，自动排出完整施工时间线，同步到智能表格和群提醒</p>
+<p class="sub">填写门店信息，自动排出完整施工时间线，一键创建项目</p>
 
 <form id="form">
 <label>项目名称</label>
@@ -64,136 +60,24 @@ input:focus,select:focus{border-color:#1677ff}
 <input id="date" type="date" required>
 
 <label>门店面积（㎡）</label>
-<input id="area" type="number" placeholder="80" required min="20" max="500">
+<input id="area" type="number" placeholder="80" required min="20" max="500" value="80">
 
 <button type="submit" class="btn">🚀 生成项目时间线</button>
 </form>
 
 <div id="result" class="result"></div>
 <div id="preview" class="preview"></div>
+<div id="loadingBox" class="loading">
+  <div class="spinner"></div>
+  <p style="color:#666;font-size:14px">正在创建项目，请稍候...</p>
+</div>
 </div>
 </div>
 
 <script>
-document.getElementById("form").addEventListener("submit", async e => {
-  e.preventDefault();
-  const btn = e.target.querySelector("button");
-  const result = document.getElementById("result");
-  const preview = document.getElementById("preview");
-
-  const name = document.getElementById("name").value.trim();
-  const store = document.getElementById("store").value.trim();
-  const dateVal = document.getElementById("date").value;
-  const area = parseFloat(document.getElementById("area").value);
-
-  btn.textContent = "⏳ 计算中...";
-  btn.disabled = true;
-  result.style.display = "none";
-  preview.style.display = "none";
-
-  const nodes = generateTimeline(dateVal, area);
-
-  // 统计
-  const startupCount = nodes.filter(n => n.stage === "startup").length;
-  const consCount = nodes.filter(n => n.stage === "construction").length;
-  const cdCount = nodes.filter(n => n.stage === "countdown").length;
-
-  // 预览
-  const stages = {startup:"启动",construction:"装修",countdown:"倒计时"};
-  let previewHTML = `<h3>📅 ${name} — 节点时间线</h3>`;
-  previewHTML += `<div class="stats">
-    <div class="stat"><div class="stat-num">${nodes.length}</div><div class="stat-label">总节点</div></div>
-    <div class="stat"><div class="stat-num">${startupCount}</div><div class="stat-label">启动阶段</div></div>
-    <div class="stat"><div class="stat-num">${consCount}</div><div class="stat-label">装修阶段</div></div>
-    <div class="stat"><div class="stat-num">${cdCount}</div><div class="stat-label">倒计时</div></div>
-  </div>`;
-  previewHTML += `<table><tr><th>节点</th><th>阶段</th><th>开始</th><th>结束</th><th>负责人</th></tr>`;
-  nodes.forEach(n => {
-    const start = n.planned_start || "手动触发";
-    const end = n.planned_end || "手动触发";
-    previewHTML += `<tr><td>${n.name}</td><td>${stages[n.stage]}</td><td>${start}</td><td>${end}</td><td>${n.assignee}</td></tr>`;
-  });
-  previewHTML += `</table>`;
-  preview.innerHTML = previewHTML;
-  preview.style.display = "block";
-
-  // 构建完整数据
-  const newProject = {
-    id: "",
-    name,
-    store_name: store,
-    opening_date: dateVal,
-    store_area: area,
-    status: "active",
-    created_at: new Date().toISOString().split("T")[0],
-    nodes: nodes.map(n => ({
-      name: n.name, node_type: n.node_type, stage: n.stage,
-      status: "pending",
-      planned_start: n.planned_start, planned_end: n.planned_end,
-      actual_start: null, actual_end: null,
-      assignee: n.assignee, depends_on: n.depends_on,
-      is_critical: n.is_critical, duration: n.duration, sort_order: n.sort_order,
-    }))
-  };
-
-  // 加载已有数据并合并
-  let existing = [];
-  try {
-    const resp = await fetch("https://raw.githubusercontent.com/eikelxia/hf-daily/master/data/projects.json");
-    if (resp.ok) existing = await resp.json();
-  } catch(e) {}
-
-  newProject.id = String(existing.length + 1);
-  existing.push(newProject);
-  const finalJSON = JSON.stringify(existing, null, 2);
-
-  window._finalJSON = finalJSON;
-
-  result.className = "result success";
-  result.innerHTML = `
-    <p style="font-size:16px;font-weight:bold;margin-bottom:8px">✅ 时间线已生成！共 ${nodes.length} 个节点</p>
-    <div style="margin-top:12px;text-align:left">
-      <div class="step"><div class="step-num">1</div><div class="step-text">点击下方按钮复制 JSON 数据</div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-text">点击「打开 GitHub」跳转到编辑页面</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-text">全选粘贴 → 点击 Commit changes 保存</div></div>
-    </div>
-    <div style="margin-top:12px">
-      <button onclick="copyJSON()" id="copyBtn" class="copy-btn" style="margin-right:8px">📋 复制 JSON</button>
-      <button onclick="openGitHub()" class="btn" style="width:auto;padding:6px 20px;font-size:13px">🔗 打开 GitHub 编辑页面</button>
-    </div>
-    <p style="font-size:12px;color:#999;margin-top:8px">保存后系统会自动同步到智能表格，定时提醒也会正常运作</p>
-  `;
-  result.style.display = "block";
-
-  btn.textContent = "🚀 生成项目时间线";
-  btn.disabled = false;
-});
-
-function copyJSON() {
-  if (!window._finalJSON) return;
-  navigator.clipboard.writeText(window._finalJSON).then(() => {
-    const btn = document.getElementById("copyBtn");
-    btn.textContent = "✅ 已复制！";
-    setTimeout(() => { btn.textContent = "📋 复制 JSON"; }, 2000);
-  }).catch(() => {
-    // Fallback
-    const ta = document.createElement("textarea");
-    ta.value = window._finalJSON;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-    const btn = document.getElementById("copyBtn");
-    btn.textContent = "✅ 已复制！";
-    setTimeout(() => { btn.textContent = "📋 复制 JSON"; }, 2000);
-  });
-}
-
-function openGitHub() {
-  window.open("https://github.com/eikelxia/hf-daily/edit/master/data/projects.json", "_blank");
-}
-
-// ---- 本地时间线计算（和 Python 端逻辑一致）----
+// ═══════════════════════════════════════════
+// 本地时间线计算（预览用，和 Python 端逻辑一致）
+// ═══════════════════════════════════════════
 function generateTimeline(openingDateStr, area) {
   const openingDate = new Date(openingDateStr + "T00:00:00");
   const today = new Date();
@@ -322,6 +206,147 @@ function generateTimeline(openingDateStr, area) {
   }
 
   return nodes;
+}
+
+// ═══════════════════════════════════════════
+// 表单处理
+// ═══════════════════════════════════════════
+const FC_URL = "https://hf-daily-jrelwswabz.cn-hangzhou.fcapp.run/create";
+
+document.getElementById("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button");
+  const result = document.getElementById("result");
+  const preview = document.getElementById("preview");
+  const loadingBox = document.getElementById("loadingBox");
+
+  const name = document.getElementById("name").value.trim();
+  const store = document.getElementById("store").value.trim();
+  const dateVal = document.getElementById("date").value;
+  const area = parseFloat(document.getElementById("area").value);
+
+  // 第一阶段：预览
+  if (btn.textContent.includes("生成")) {
+    btn.textContent = "⏳ 计算中...";
+    btn.disabled = true;
+    result.style.display = "none";
+    preview.style.display = "none";
+
+    const nodes = generateTimeline(dateVal, area);
+    const startupCount = nodes.filter(n => n.stage === "startup").length;
+    const consCount = nodes.filter(n => n.stage === "construction").length;
+    const cdCount = nodes.filter(n => n.stage === "countdown").length;
+
+    const stages = {startup:"启动",construction:"装修",countdown:"倒计时"};
+    let previewHTML = `<h3>📅 ${name} — 节点时间线预览</h3>`;
+    previewHTML += `<div class="stats">
+      <div class="stat"><div class="stat-num">${nodes.length}</div><div class="stat-label">总节点</div></div>
+      <div class="stat"><div class="stat-num">${startupCount}</div><div class="stat-label">启动阶段</div></div>
+      <div class="stat"><div class="stat-num">${consCount}</div><div class="stat-label">装修阶段</div></div>
+      <div class="stat"><div class="stat-num">${cdCount}</div><div class="stat-label">倒计时</div></div>
+    </div>`;
+    previewHTML += `<table><tr><th>节点</th><th>阶段</th><th>开始</th><th>结束</th><th>负责人</th></tr>`;
+    nodes.forEach(n => {
+      const start = n.planned_start || "手动触发";
+      const end = n.planned_end || "手动触发";
+      previewHTML += `<tr><td>${n.name}</td><td>${stages[n.stage]}</td><td>${start}</td><td>${end}</td><td>${n.assignee}</td></tr>`;
+    });
+    previewHTML += `</table>`;
+
+    // 添加确认按钮
+    previewHTML += `<div style="margin-top:16px;display:flex;gap:12px">
+      <button onclick="confirmCreate()" id="confirmBtn" class="btn btn-green">✅ 确认无误，一键创建项目</button>
+      <button onclick="cancelCreate()" class="btn" style="background:#fff;color:#666;border:1px solid #d9d9d9;width:auto;padding:12px 20px">取消</button>
+    </div>`;
+
+    preview.innerHTML = previewHTML;
+    preview.style.display = "block";
+
+    // 保存表单数据
+    window._formData = { name, store, date: dateVal, area };
+    window._nodes = nodes;
+
+    btn.textContent = "📝 修改信息重新生成";
+    btn.disabled = false;
+    return;
+  }
+
+  // 第二阶段：修改信息 → 重新预览
+  btn.textContent = "🚀 生成项目时间线";
+  btn.disabled = false;
+  preview.style.display = "none";
+  result.style.display = "none";
+});
+
+// 确认创建
+async function confirmCreate() {
+  const { name, store, date: dateVal, area } = window._formData || {};
+  if (!name || !dateVal) return;
+
+  const result = document.getElementById("result");
+  const loadingBox = document.getElementById("loadingBox");
+  const preview = document.getElementById("preview");
+  const confirmBtn = document.getElementById("confirmBtn");
+
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = "⏳ 创建中...";
+  loadingBox.style.display = "block";
+  result.style.display = "none";
+
+  try {
+    const formBody = new URLSearchParams({ name, store, opening_date: dateVal, area: String(area) });
+    const resp = await fetch(FC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formBody.toString(),
+    });
+
+    const html = await resp.text();
+    loadingBox.style.display = "none";
+    preview.style.display = "none";
+
+    if (resp.ok && html.includes("成功")) {
+      result.className = "result success";
+      result.innerHTML = `
+        <p style="font-size:18px;font-weight:bold;margin-bottom:12px">✅ 项目创建成功！</p>
+        <p style="font-size:14px;color:#333;line-height:2">
+          <b>项目名称：</b>${name}<br>
+          <b>开业日期：</b>${dateVal}<br>
+          <b>门店面积：</b>${area}㎡<br>
+          <b>总节点数：</b>${window._nodes?.length || 37} 个
+        </p>
+        <div style="margin-top:16px;display:flex;gap:12px">
+          <a href="/hf-daily/" class="btn" style="width:auto;padding:10px 24px;text-decoration:none;display:inline-block">📋 前往项目看板</a>
+          <a href="/hf-daily/create" class="btn" style="width:auto;padding:10px 24px;text-decoration:none;display:inline-block;background:#52c41a">➕ 再建一个</a>
+        </div>
+      `;
+      result.style.display = "block";
+
+      // 重置表单
+      document.getElementById("form").querySelector("button").textContent = "🚀 生成项目时间线";
+    } else {
+      // 显示 FC 返回的 HTML（可能包含错误信息）
+      result.className = "result error";
+      result.innerHTML = `<p style="font-weight:bold">❌ 创建失败</p>
+        <p style="margin-top:8px;font-size:12px">请检查网络连接后重试。如果持续失败，请确认 FC 函数是否正常运行。</p>
+        <p style="margin-top:8px;font-size:11px;color:#999">服务端响应：${html.substring(0, 200)}</p>`;
+      result.style.display = "block";
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "✅ 确认无误，一键创建项目";
+    }
+  } catch (err) {
+    loadingBox.style.display = "none";
+    result.className = "result error";
+    result.innerHTML = `<p style="font-weight:bold">❌ 网络错误</p><p style="margin-top:8px">${err.message}</p>`;
+    result.style.display = "block";
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = "✅ 确认无误，一键创建项目";
+  }
+}
+
+function cancelCreate() {
+  document.getElementById("preview").style.display = "none";
+  document.getElementById("form").querySelector("button").textContent = "🚀 生成项目时间线";
 }
 </script>
 </body>
