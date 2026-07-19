@@ -321,7 +321,7 @@ def run_daily_scan():
     now = datetime.now(BJT)
     current_hour = now.hour
 
-    BASE_URL = "https://eikelxia.github.io/hf-daily/confirm.html"
+    BASE_URL = "https://hf-daily-jrelwswabz.cn-hangzhou.fcapp.run"
     projects = load_projects()
     sent_count = 0
 
